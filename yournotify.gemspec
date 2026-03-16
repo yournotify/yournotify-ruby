@@ -6,4 +6,10 @@ Gem::Specification.new do |spec|
   spec.files = Dir["lib/**/*.rb", "README.md"]
   spec.require_paths = ["lib"]
   spec.license = "MIT"
+  spec.homepage = "https://github.com/yournotify/yournotify-ruby"
+  spec.metadata = {
+    "homepage_uri" => spec.homepage,
+    "source_code_uri" => spec.homepage,
+    "bug_tracker_uri" => spec.homepage + "/issues"
+  }
 end
