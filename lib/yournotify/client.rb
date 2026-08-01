@@ -120,20 +120,41 @@ module Yournotify
     def get_reward_products(params = {})
       request('rewards/products', 'GET', params)
     end
+    def get_reward_analytics(id); request("rewards/#{id}/analytics"); end
+    def get_reward_submissions(id, params = {}); request("rewards/#{id}/submissions", 'GET', params); end
+    def invite_to_reward(id, data = {}); request("rewards/#{id}/invite", 'POST', data); end
+    def send_created_reward(id, data = {}); request("rewards/#{id}/send", 'POST', data); end
+    def get_reward_bulk_job(id, job_id); request("rewards/#{id}/bulk-jobs/#{job_id}"); end
+    def retry_reward_bulk_job(id, job_id); request("rewards/#{id}/bulk-jobs/#{job_id}/retry", 'POST', {}); end
+    def bootstrap_reward_claim(data = {}); request('rewards/reward', 'POST', data); end
+    def submit_reward_claim(data = {}); request('rewards/submit', 'POST', data); end
 
     def get_loyalty_programs(params = {}); request('loyalty/programs', 'GET', params); end
+    def get_loyalty_program(id); request("loyalty/programs/#{id}"); end
     def create_loyalty_program(data = {}); request('loyalty/programs', 'POST', data); end
     def update_loyalty_program(id, data = {}); request("loyalty/programs/#{id}", 'PUT', data); end
+    def get_loyalty_members(id, params = {}); request("loyalty/programs/#{id}/members", 'GET', params); end
+    def get_loyalty_member(id, subscriber_id); request("loyalty/programs/#{id}/members/#{subscriber_id}"); end
     def adjust_loyalty_points(id, data = {}); request("loyalty/programs/#{id}/points", 'POST', data); end
     def track_loyalty_event(id, data = {}); request("loyalty/programs/#{id}/events", 'POST', data); end
+    def add_loyalty_rule(id, data = {}); request("loyalty/programs/#{id}/rules", 'POST', data); end
+    def connect_loyalty_reward(id, data = {}); request("loyalty/programs/#{id}/rewards", 'POST', data); end
     def redeem_loyalty_reward(id, data = {}); request("loyalty/programs/#{id}/redeem", 'POST', data); end
     def get_referral_programs(params = {}); request('referrals/programs', 'GET', params); end
+    def get_referral_program(id); request("referrals/programs/#{id}"); end
     def create_referral_program(data = {}); request('referrals/programs', 'POST', data); end
     def update_referral_program(id, data = {}); request("referrals/programs/#{id}", 'PUT', data); end
     def delete_referral_program(id); request("referrals/programs/#{id}", 'DELETE'); end
     def add_referral_advocate(id, data = {}); request("referrals/programs/#{id}/advocates", 'POST', data); end
+    def get_referral_advocates(id, params = {}); request("referrals/programs/#{id}/advocates", 'GET', params); end
+    def add_referral_advocates_from_lists(id, data = {}); request("referrals/programs/#{id}/advocates/bulk", 'POST', data); end
+    def remove_referral_advocate(id, advocate_id); request("referrals/programs/#{id}/advocates/#{advocate_id}", 'DELETE'); end
     def track_referral_event(id, data = {}); request("referrals/programs/#{id}/events", 'POST', data); end
     def get_referral_analytics(id, params = {}); request("referrals/programs/#{id}/analytics", 'GET', params); end
+    def retry_referral_conversion(id, conversion_id); request("referrals/programs/#{id}/conversions/#{conversion_id}/retry", 'POST', {}); end
+    def review_referral_conversion(id, conversion_id, data = {}); request("referrals/programs/#{id}/conversions/#{conversion_id}/review", 'POST', data); end
+    def get_referral_risk(id); request("referrals/programs/#{id}/risk"); end
+    def create_advocate_portal_session(id, advocate_id); request("referrals/programs/#{id}/advocates/#{advocate_id}/portal-session", 'POST', {}); end
 
     def identify(data = {})
       request('automations/identify', 'POST', data)
