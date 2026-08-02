@@ -1,6 +1,9 @@
 require "json"
 require "net/http"
 require "uri"
+require "openssl"
+require "securerandom"
+require "time"
 
 module Yournotify
   class ApiError < StandardError
@@ -16,9 +19,11 @@ module Yournotify
   class Client
     attr_reader :api_key, :api_url
 
-    def initialize(api_key, api_url = "https://api.yournotify.com/")
+    def initialize(api_key, api_url = "https://api.yournotify.com/", timeout: 30, max_retries: 2)
       @api_key = api_key
       @api_url = api_url.sub(%r{/*$}, '/')
+      @timeout = timeout
+      @max_retries = [max_retries.to_i, 0].max
     end
 
     def set_api_url(api_url)
@@ -34,11 +39,23 @@ module Yournotify
       req['Authorization'] = "Bearer #{@api_key}"
       req['Content-Type'] = 'application/json'
       req.body = JSON.generate(data) if method != 'GET' && data
-      res = Net::HTTP.start(uri.hostname, uri.port, use_ssl: uri.scheme == 'https') { |http| http.request(req) }
-      body = res.body && !res.body.empty? ? JSON.parse(res.body) : {}
-      raise ApiError.new(body['message'] || "Yournotify API request failed with status #{res.code}.", res.code.to_i, body) unless res.is_a?(Net::HTTPSuccess)
-
-      body
+      idempotency = data.is_a?(Hash) && (data[:idempotency_key] || data['idempotency_key'] || data[:event_id] || data['event_id'])
+      req['Idempotency-Key'] = idempotency.to_s if idempotency
+      retryable = %w[GET HEAD PUT DELETE].include?(method) || req['Idempotency-Key']
+      attempts = 0
+      loop do
+        begin
+          res = Net::HTTP.start(uri.hostname, uri.port, use_ssl: uri.scheme == 'https', open_timeout: @timeout, read_timeout: @timeout) { |http| http.request(req) }
+        rescue IOError, SystemCallError, Timeout::Error
+          raise unless retryable && attempts < @max_retries
+          attempts += 1; sleep([0.25 * (2**attempts), 5].min); next
+        end
+        body = res.body && !res.body.empty? ? JSON.parse(res.body) : {}
+        return body if res.is_a?(Net::HTTPSuccess)
+        raise ApiError.new(body['message'] || "Yournotify API request failed with status #{res.code}.", res.code.to_i, body) unless retryable && attempts < @max_retries && (res.code.to_i == 429 || res.code.to_i >= 500)
+        attempts += 1
+        sleep((res['Retry-After'] || 0).to_f.nonzero? || [0.25 * (2**attempts), 5].min)
+      end
     end
 
     def validate_auth
@@ -68,6 +85,8 @@ module Yournotify
     def send_inapp(data = {})
       create_campaign(data.merge(channel: 'inapp'))
     end
+
+    def send_voice(data = {}); request('campaigns/voice', 'POST', data); end
 
     def test_campaign(data = {})
       request('campaigns/test', 'POST', data)
@@ -104,6 +123,17 @@ module Yournotify
     def get_contacts(params = {})
       request('contacts', 'GET', params)
     end
+    def get_contact(id); request("contacts/#{id}"); end
+    def update_contact(id, data = {}); request("contacts/#{id}", 'PUT', data); end
+    def delete_contact(id); request("contacts/#{id}", 'DELETE'); end
+    def contact_summary(params = {}); request('contacts/summary', 'GET', params); end
+    def create_contact_session(data = {}); request('contacts/session', 'POST', data); end
+    def add_list(data = {}); request('lists', 'POST', data); end
+    def get_lists(params = {}); request('lists', 'GET', params); end
+    def get_list(id); request("lists/#{id}"); end
+    def update_list(id, data = {}); request("lists/#{id}", 'PUT', data); end
+    def delete_list(id); request("lists/#{id}", 'DELETE'); end
+    def export_list(id, params = {}); request("lists/export/#{id}", 'GET', params); end
 
     def get_rewards(params = {})
       request('rewards', 'GET', params)
@@ -161,7 +191,19 @@ module Yournotify
     end
 
     def track(data = {})
-      request('automations/events', 'POST', data)
+      request('automations/events', 'POST', normalize_event(data))
+    end
+    def track_batch(events, options = {}); request('automations/events/batch', 'POST', options.merge(events: events.map { |event| normalize_event(event) })); end
+    def normalize_event(data); value = data.dup; value[:event_id] ||= value[:idempotency_key] || SecureRandom.uuid; value[:occurred_at] ||= Time.now.utc.iso8601(6); value; end
+    def alias_contact(data = {}); request('automations/alias', 'POST', data); end
+
+    def self.verify_webhook(payload:, signature:, timestamp:, secret:, tolerance: 300)
+      parts = signature.to_s.split(',').filter_map { |part| part.split('=', 2) if part.include?('=') }.to_h
+      timestamp = parts['t'] if timestamp.to_s.empty?; signature = parts['v1'] || signature
+      return false if (Time.now.to_i - timestamp.to_i).abs > tolerance
+      expected = OpenSSL::HMAC.hexdigest('SHA256', secret, "#{timestamp}.#{payload.is_a?(String) ? payload : JSON.generate(payload)}")
+      provided = signature.to_s.sub(/^sha256=/, '')
+      expected.bytesize == provided.bytesize && OpenSSL.fixed_length_secure_compare(expected, provided)
     end
 
     def get_profile

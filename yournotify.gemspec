@@ -1,6 +1,6 @@
 Gem::Specification.new do |spec|
   spec.name = "yournotify-ruby"
-  spec.version = "0.1.0"
+  spec.version = "1.0.0"
   spec.summary = "Ruby client for the current Yournotify API"
   spec.authors = ["Yournotify"]
   spec.files = Dir["lib/**/*.rb", "README.md"]
