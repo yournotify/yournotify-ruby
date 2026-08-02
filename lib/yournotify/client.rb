@@ -67,11 +67,11 @@ module Yournotify
     end
 
     def send_email(name, subject, html, text = '', status = 'draft', from = '', to = [])
-      create_campaign({ name: name, subject: subject, html: html, body: html, text: text, from: from, from_email: from, status: status, channel: 'email', lists: to })
+      create_campaign({ name: name, subject: subject, html: html, body: html, text: text, from: from, status: status, channel: 'email', lists: to })
     end
 
     def send_sms(name, from, text, status = 'draft', to = [])
-      create_campaign({ name: name, from: from, sender: from, text: text, body: text, status: status, channel: 'sms', lists: to })
+      create_campaign({ name: name, from: from, text: text, body: text, status: status, channel: 'sms', lists: to })
     end
 
     def send_whatsapp(data = {})
