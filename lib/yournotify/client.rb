@@ -187,15 +187,15 @@ module Yournotify
     def create_advocate_portal_session(id, advocate_id); request("referrals/programs/#{id}/advocates/#{advocate_id}/portal-session", 'POST', {}); end
 
     def identify(data = {})
-      request('automations/identify', 'POST', data)
+      request('sdk/identify', 'POST', data)
     end
 
     def track(data = {})
-      request('automations/events', 'POST', normalize_event(data))
+      request('sdk/events', 'POST', normalize_event(data))
     end
-    def track_batch(events, options = {}); request('automations/events/batch', 'POST', options.merge(events: events.map { |event| normalize_event(event) })); end
+    def track_batch(events, options = {}); request('sdk/events/batch', 'POST', options.merge(events: events.map { |event| normalize_event(event) })); end
     def normalize_event(data); value = data.dup; value[:event_id] ||= value[:idempotency_key] || SecureRandom.uuid; value[:occurred_at] ||= Time.now.utc.iso8601(6); value; end
-    def alias_contact(data = {}); request('automations/alias', 'POST', data); end
+    def alias_contact(data = {}); request('sdk/alias', 'POST', data); end
 
     def self.verify_webhook(payload:, signature:, timestamp:, secret:, tolerance: 300)
       parts = signature.to_s.split(',').filter_map { |part| part.split('=', 2) if part.include?('=') }.to_h
